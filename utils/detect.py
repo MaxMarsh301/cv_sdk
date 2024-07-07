@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-import time
+import time, os
 from concurrent.futures import ThreadPoolExecutor
 
 import networkx as nx
@@ -16,21 +16,25 @@ def enhance_contrast(image):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     return clahe.apply(image)
 
-def pre_process_image(image, blur_ksize=5, thresh_blocksize=11, min_size=1500):
+def pre_process_image(image, blur_ksize=5, thresh_blocksize=11, min_size=1500, current_folder="", img_new_name=""):
     """
     Предобработка изображения для улучшения распознавания стен.
     """
     # Применение гауссового размытия для уменьшения шума
     blurred = cv2.GaussianBlur(image, (blur_ksize, blur_ksize), 0)
-
+    cv2.imwrite(os.path.join(current_folder, "image", "processed_image", "blurred", img_new_name), blurred)
     # Использование адаптивного порога
     thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                                    cv2.THRESH_BINARY_INV, thresh_blocksize, 2)
-    
+    cv2.imwrite(os.path.join(current_folder, "image", "processed_image", "threshold", "adaptiveThreshold_" + img_new_name), thresh)
+    ret2,th2 = cv2.threshold(blurred,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    cv2.imwrite(os.path.join(current_folder, "image", "processed_image", "threshold", "Threshold_OTSU_" + img_new_name), th2)
+    #cv2.imshow('gray', th2)
+
     # Морфологические операции для удаления тонких линий
     kernel = np.ones((5, 5), np.uint8)
-    opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
-    sure_bg = cv2.dilate(opening, kernel, iterations=3)
+    opening = cv2.morphologyEx(th2, cv2.MORPH_OPEN, kernel, iterations=2)
+    sure_bg = cv2.dilate(opening, kernel, iterations=1)
 
     # Удаление мелких объектов (таких как двери и окна)
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(sure_bg, connectivity=8)

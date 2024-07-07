@@ -104,11 +104,17 @@ def image_graph(img_name, blur_ksize, thresh_blocksize, eps_fac):
     processed_image = detect.pre_process_image(enhanced_image, 
                                                blur_ksize=blur_ksize, #25
                                                thresh_blocksize=thresh_blocksize, #15
-                                               min_size=1500)
+                                               min_size=1500, 
+                                               current_folder = current_folder,
+                                               img_new_name=img_new_name)
     cv2.imwrite(os.path.join(current_folder, "image", "processed_image", img_new_name), processed_image)
     # Получение контуров стен
-    wall_contours = detect.get_wall_contours(processed_image)
+    processed_image = cv2.bitwise_not(processed_image)
+    cv2.imwrite(os.path.join(current_folder, "image", "processed_image", "invert_" + img_new_name), processed_image)
 
+    wall_contours = detect.get_wall_contours(processed_image)
+    print(wall_contours)
+    #cv2.imwrite(os.path.join(current_folder, "image", "walls_with_contours", "contours_" + img_new_name), wall_contours)
     # Получение координат стен
     wall_coordinates = detect.get_wall_coordinates(wall_contours, gray_image.shape[0], epsilon_factor=eps_fac)
 
