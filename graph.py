@@ -101,12 +101,14 @@ def image_graph(img_name, blur_ksize, thresh_blocksize, eps_fac):
     enhanced_image = detect.enhance_contrast(gray_image)
     cv2.imwrite(os.path.join(current_folder, "image", "enhanced", img_new_name), enhanced_image)
     # Предобработка изображения для улучшения распознавания стен.
+    # Флаг OTSU переключает выбор результата алгоритма True - threshold OTSU, False - adaptive threshold
     processed_image = detect.pre_process_image(enhanced_image, 
                                                blur_ksize=blur_ksize, #25
                                                thresh_blocksize=thresh_blocksize, #15
                                                min_size=1500, 
                                                current_folder = current_folder,
-                                               img_new_name=img_new_name)
+                                               img_new_name=img_new_name,
+                                               OTSU=True)
     cv2.imwrite(os.path.join(current_folder, "image", "processed_image", img_new_name), processed_image)
     # Получение контуров стен
     processed_image = cv2.bitwise_not(processed_image)

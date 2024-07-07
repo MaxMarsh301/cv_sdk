@@ -16,7 +16,7 @@ def enhance_contrast(image):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     return clahe.apply(image)
 
-def pre_process_image(image, blur_ksize=5, thresh_blocksize=11, min_size=1500, current_folder="", img_new_name=""):
+def pre_process_image(image, blur_ksize=5, thresh_blocksize=11, min_size=1500, current_folder="", img_new_name="", OTSU=True):
     """
     Предобработка изображения для улучшения распознавания стен.
     """
@@ -31,9 +31,14 @@ def pre_process_image(image, blur_ksize=5, thresh_blocksize=11, min_size=1500, c
     cv2.imwrite(os.path.join(current_folder, "image", "processed_image", "threshold", "Threshold_OTSU_" + img_new_name), th2)
     #cv2.imshow('gray', th2)
 
+    if OTSU == True:
+        th = th2
+    else:
+        th = thresh
+
     # Морфологические операции для удаления тонких линий
     kernel = np.ones((5, 5), np.uint8)
-    opening = cv2.morphologyEx(th2, cv2.MORPH_OPEN, kernel, iterations=2)
+    opening = cv2.morphologyEx(th, cv2.MORPH_OPEN, kernel, iterations=2)
     sure_bg = cv2.dilate(opening, kernel, iterations=1)
 
     # Удаление мелких объектов (таких как двери и окна)
