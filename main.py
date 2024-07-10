@@ -34,6 +34,7 @@ def calculate_parameters(width, height):
     return interp_params
 
 
+
 # эмулирую отправку изображения на сервер из клиента в простом виде
 image_name = '_20240620_164708_fix.png'
 image_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'image' , image_name)
