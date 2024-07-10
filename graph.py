@@ -6,7 +6,6 @@ import networkx as nx
 from shapely.geometry import LineString, Point, Polygon
 
 from PIL import Image
-
 import os
 
 def intersects_any_wall(line, walls_lines):
