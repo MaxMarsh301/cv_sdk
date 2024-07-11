@@ -6,6 +6,7 @@ import networkx as nx
 from shapely.geometry import LineString, Point, Polygon
 
 from PIL import Image
+
 import os
 
 def intersects_any_wall(line, walls_lines):
@@ -83,53 +84,45 @@ def add_first_point(points):
     return points + [points[0]]
 
 
-def image_graph(img_name, blur_ksize, thresh_blocksize, eps_fac):
+def image_graph(img_path, eps_fac):
     # Получаем текущий путь
-    current_folder = os.path.dirname(os.path.abspath(__file__))
 
     #img_path = os.path.join(current_folder, 'static', 'cv', "img", "received", img_name)
-    
-    img_path = os.path.join(current_folder, 'image' , img_name)
 
-    img_new_name = "_" + str(blur_ksize) + "_" + str(thresh_blocksize) + img_name
+    img_folder = os.path.dirname(img_path)
 
-    print(blur_ksize, thresh_blocksize, eps_fac)
     # Загружаем изображение
     gray_image = detect.load_image(img_path)
     # повышаем контрастность
-    enhanced_image = detect.enhance_contrast(gray_image)
-    cv2.imwrite(os.path.join(current_folder, "image", "enhanced", img_new_name), enhanced_image)
+    
+    # enhanced_image = detect.enhance_contrast(gray_image)
+    # cv2.imwrite(os.path.join(current_folder, "image", "enhanced", img_new_name), enhanced_image)
     # Предобработка изображения для улучшения распознавания стен.
-    # Флаг OTSU переключает выбор результата алгоритма True - threshold OTSU, False - adaptive threshold
-    OTSU = True
-    processed_image = detect.pre_process_image(enhanced_image, 
-                                               blur_ksize=blur_ksize, #25
-                                               thresh_blocksize=thresh_blocksize, #15
-                                               min_size=1500, 
-                                               current_folder = current_folder,
-                                               img_new_name=img_new_name,
-                                               OTSU=OTSU)
-    cv2.imwrite(os.path.join(current_folder, "image", "processed_image", img_new_name), processed_image)
-    # Получение контуров стен
-    if OTSU==True: 
-        #инвертирование цветов
-        processed_image = cv2.bitwise_not(processed_image)
-    cv2.imwrite(os.path.join(current_folder, "image", "processed_image", "invert_" + img_new_name), processed_image)
+    # processed_image = detect.pre_process_image(gray_image, 
+    #                                            blur_ksize=blur_ksize, #25
+    #                                            thresh_blocksize=thresh_blocksize, #15
+    #                                            min_size=1500)
+    processed_image = detect.pre_process_image_new(gray_image)
+    cv2.imwrite(os.path.join(img_folder, "preproc.png"), processed_image)
+    
+    processed_image = detect.remove_small_objects(processed_image)
+    cv2.imwrite(os.path.join(img_folder, "wall_filtered.png"), processed_image)
 
+    # Получение контуров стен
     wall_contours = detect.get_wall_contours(processed_image)
-    print(wall_contours)
-    #cv2.imwrite(os.path.join(current_folder, "image", "walls_with_contours", "contours_" + img_new_name), wall_contours)
+
     # Получение координат стен
     wall_coordinates = detect.get_wall_coordinates(wall_contours, gray_image.shape[0], epsilon_factor=eps_fac)
+    
 
     # Высота и ширина изображения
     h_img = gray_image.shape[0]
     w_img = gray_image.shape[1]
 
     # отрисовка контуров на изображении
-    cv2.imwrite(os.path.join(current_folder, "image", "walls_with_contours", img_new_name), detect.draw_contours(gray_image, wall_contours))
+    cv2.imwrite(os.path.join(img_folder, "walls.png"), detect.draw_contours(gray_image, wall_contours))
     outer_contour_coordinates, image_with_outer_contour = detect.detectOuterContours(gray_image, gray_image.copy(), epsilon_factor=0.001)
-    cv2.imwrite(os.path.join(current_folder, "image", "outer_contour", img_new_name), image_with_outer_contour)
+    cv2.imwrite(os.path.join(img_folder, "outer_contour.png"), image_with_outer_contour)
     """
     print("2.5")
     rooms, colored_rooms = detect.find_rooms(gray_image.copy())

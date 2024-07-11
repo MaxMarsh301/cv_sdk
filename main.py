@@ -2,6 +2,7 @@ import os
 from PIL import Image
 import numpy as np
 from process import process_image_function
+import cv2
 
 
 def round_to_odd(value):
@@ -34,41 +35,46 @@ def calculate_parameters(width, height):
     return interp_params
 
 
-
 # эмулирую отправку изображения на сервер из клиента в простом виде
-image_name = '_20240620_164708_fix.png'
-image_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'image' , image_name)
-with open(image_file, 'rb') as file:
-    image = Image.open(image_file)
-    params = calculate_parameters(image.width, image.height)
-    #использовал список параметров для создания нескольких вариантов распознавания
-    params = [params, ]
-    #params
-    #0 - blur
-    #1 - thresh
-    #2 - epsilon factor
-    #Вызываю функцию, которая на сервере 
-    response = process_image_function(image_name, params)
+folders = ["test_1", "test_2", "test_3"]
+for folder_name in folders:
+    root = os.path.dirname(os.path.realpath(__file__))
+    folder = os.path.join(root, 'test_image', folder_name)
+    # image_path = '_20240619_121059_fix.png'
+    # # image_name = '_20240620_164708_fix.png'
+    image_file = os.path.join(folder, "in.png")
+    with open(image_file, 'rb') as file:
+        image = Image.open(image_file)
+        params = calculate_parameters(image.width, image.height)
+        #использовал список параметров для создания нескольких вариантов распознавания
+        params = [params, ]
+        #params
+        #0 - blur
+        #1 - thresh
+        #2 - epsilon factor
+        #Вызываю функцию, которая на сервере 
+        response = process_image_function(image_file, params)
 
-    contour_list = response[0]
-    wall_coordinates_list = response[1]
-    room_coordinates_list = response[2]
-    edges_list = response[3]
-    """
-    for outer_contour_coordinates in contour_list:
-        print(outer_contour_coordinates)
+        contour_list = response[0]
+        wall_coordinates_list = response[1]
+        room_coordinates_list = response[2]
+        edges_list = response[3]
 
-    for wall_coordinates in wall_coordinates_list:
-        for wall in wall_coordinates:
-            print(wall)
+        """
+        for outer_contour_coordinates in contour_list:
+            print(outer_contour_coordinates)
 
-    for room_coordinates in room_coordinates_list:
-        for room in room_coordinates:
-            print(room)
+        for wall_coordinates in wall_coordinates_list:
+            for wall in wall_coordinates:
+                print(wall)
 
-    for edge in edges_list:
-        print(edge)
+        for room_coordinates in room_coordinates_list:
+            for room in room_coordinates:
+                print(room)
 
-    """
+        for edge in edges_list:
+            print(edge)
+
+        """
 
 
