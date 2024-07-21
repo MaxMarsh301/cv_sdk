@@ -14,7 +14,7 @@ def process_image_function(image_name, params):
     # когда вычислял при каких параметрах распознавание лучше, сейчас использую вычисленые параметры
     for data in params:
         # Получение координат из функции обработки изображений
-        outer_contour_coordinates, room_coordinates, wall_coordinates, edges = image_graph(image_name, data[0], data[1], data[2])
+        outer_contour_coordinates, room_coordinates, wall_coordinates, edges = image_graph(image_name, data[2])
         
         # Добавление результатов текущей итерации в общие списки
         all_outer_contour_coordinates.append(outer_contour_coordinates)

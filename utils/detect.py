@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
+import math
 
-import time, os
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import networkx as nx
@@ -16,30 +17,62 @@ def enhance_contrast(image):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     return clahe.apply(image)
 
-def pre_process_image(image, blur_ksize=5, thresh_blocksize=11, min_size=1500, current_folder="", img_new_name="", OTSU=True):
+def pre_process_image_new(image):
+    """
+    Цель: 
+    1) закрасить мелкие дырки, сделать края более плавными
+    2) сделать изображение черно белым
+    3) убрать все тонкие объекты что не относятся к стенам
+    """
+    blurSize = 5
+    while True:
+        filtered_image = cv2.medianBlur(image, blurSize)
+        filtered_image = cv2.GaussianBlur(filtered_image, (7, 7), 0.8)
+        _, filtered_image = cv2.threshold(filtered_image,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(11,11))
+        filtered_image = cv2.morphologyEx(filtered_image, cv2.MORPH_OPEN, kernel, iterations=1)
+        cv2.imshow("blur", filtered_image)
+        print("Blur Size", blurSize)
+        k = cv2.waitKey()
+        if k == ord('q'): break
+        elif k == ord('w'): blurSize += 2
+        elif k == ord('s'): blurSize -= 2
+    
+
+    return filtered_image
+
+def remove_small_objects(image):
+     # Удаление мелких объектов (таких как двери и окна)
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(image, connectivity=8)
+    sizes = stats[1:, -1]
+
+    processed_img = np.zeros(labels.shape, np.uint8)
+
+    # от размеров картинки прикидываем насколько маленькие объекты фильтруем
+    img_side = math.sqrt(image.shape[0]*image.shape[1])
+    min_area = math.pow(img_side * 0.005, 2)
+
+    for i in range(0, num_labels - 1):
+        if sizes[i] >= min_area:
+            processed_img[labels == i + 1] = 255
+    return processed_img
+
+def pre_process_image(image, blur_ksize=5, thresh_blocksize=11, min_size=1500):
     """
     Предобработка изображения для улучшения распознавания стен.
     """
     # Применение гауссового размытия для уменьшения шума
     blurred = cv2.GaussianBlur(image, (blur_ksize, blur_ksize), 0)
-    cv2.imwrite(os.path.join(current_folder, "image", "processed_image", "blurred", img_new_name), blurred)
+
     # Использование адаптивного порога
     thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                                    cv2.THRESH_BINARY_INV, thresh_blocksize, 2)
-    cv2.imwrite(os.path.join(current_folder, "image", "processed_image", "threshold", "adaptiveThreshold_" + img_new_name), thresh)
-    ret2,th2 = cv2.threshold(blurred,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    cv2.imwrite(os.path.join(current_folder, "image", "processed_image", "threshold", "Threshold_OTSU_" + img_new_name), th2)
-    #cv2.imshow('gray', th2)
-
-    if OTSU == True:
-        th = th2
-    else:
-        th = thresh
-
+    
     # Морфологические операции для удаления тонких линий
     kernel = np.ones((5, 5), np.uint8)
-    opening = cv2.morphologyEx(th, cv2.MORPH_OPEN, kernel, iterations=2)
-    sure_bg = cv2.dilate(opening, kernel, iterations=1)
+    opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
+    sure_bg = cv2.dilate(opening, kernel, iterations=3)
 
     # Удаление мелких объектов (таких как двери и окна)
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(sure_bg, connectivity=8)
@@ -58,10 +91,18 @@ def get_wall_contours(image):
     Получение контуров стен из изображения.
     """
     start_time = time.time()
-    contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(image, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+
+    simplified = []
+    for i in range(len(contours)):
+        cnt = contours[i]
+        approx = cv2.approxPolyDP(cnt, 3, True)
+        if len(approx) > 1:
+            simplified.append(approx)
+
     end_time = time.time()
     print(f"Time for findContours: {end_time - start_time:.4f} seconds")
-    return contours
+    return simplified
 
 def get_wall_coordinates(contours, img_height, epsilon_factor=0.001):
     """
@@ -83,7 +124,8 @@ def draw_contours(image, contours):
     Отрисовка контуров на изображении.
     """
     start_time = time.time()
-    result = cv2.drawContours(image.copy(), contours, -1, (0, 255, 0), 2)
+    result = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    cv2.drawContours(result, contours, -1, (0, 255, 0), 2)
     end_time = time.time()
     print(f"Time for drawContours: {end_time - start_time:.4f} seconds")
     return result
